@@ -62,6 +62,14 @@ function formatCredits(value) {
     return rounded.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
 }
 
+function formatTaskBlockLabel(totalCredits) {
+    const creditsText = formatCredits(totalCredits);
+    if (!creditsText) {
+        return '';
+    }
+    return `${creditsText} з.е.`;
+}
+
 function escapeHtml(text) {
     const map = {
         '&': '&amp;',
@@ -142,10 +150,13 @@ function getTaskColors(task) {
     const primaryLightness = 55;
     const secondaryLightness = Math.max(20, primaryLightness - 20);
     const backgroundLightness = 86;
+    const rowLightness = clamp(backgroundLightness + 6, 0, 98);
+    const rowSaturation = clamp(saturation - 35, 0, 60);
     return {
         primary: `hsl(${hue}, ${saturation}%, ${primaryLightness}%)`,
         secondary: `hsl(${hue}, ${secondarySaturation}%, ${secondaryLightness}%)`,
-        excelBackground: hslToHex(hue, saturation, backgroundLightness)
+        excelBackground: hslToHex(hue, saturation, backgroundLightness),
+        excelRowBackground: hslToHex(hue, rowSaturation, rowLightness)
     };
 }
 
@@ -304,7 +315,12 @@ function renderChart() {
         block.className = 'task-block';
         block.dataset.taskId = task.id;
         const totalCredits = task.credits.reduce((sum, credit) => sum + (Number(credit) || 0), 0);
-        block.textContent = `${formatCredits(totalCredits)} з.е.`;
+        const blockLabel = formatTaskBlockLabel(totalCredits);
+        block.textContent = blockLabel;
+        const accessibleLabel = blockLabel
+            ? `${task.name}: ${blockLabel}`
+            : `${task.name}: трудоёмкость не указана`;
+        block.setAttribute('aria-label', accessibleLabel);
         block.title = task.credits
             .map((credit, index) => {
                 const semesterNumber = task.start + index + 1;
@@ -494,8 +510,11 @@ function handleExportExcel() {
 
     const rowsHtml = tasks.map(task => {
         const taskTotal = task.credits.reduce((sum, credit) => sum + (Number(credit) || 0), 0);
-        let cells = `<td class="name-cell">${escapeHtml(task.name)}</td>`;
         const colors = getTaskColors(task);
+        const rowStyleAttr = colors.excelRowBackground
+            ? ` style="--row-bg: ${escapeHtml(colors.excelRowBackground)};"`
+            : '';
+        let cells = `<td class="name-cell">${escapeHtml(task.name)}</td>`;
         for (let semesterIndex = 0; semesterIndex < semesterCount; semesterIndex++) {
             const relativeIndex = semesterIndex - task.start;
             const isActive = relativeIndex >= 0 && relativeIndex < task.duration;
@@ -511,7 +530,7 @@ function handleExportExcel() {
             cells += `<td class="${cellClass}"${styleAttr}>${content}</td>`;
         }
         cells += `<td class="total-cell">${formatCredits(taskTotal)} з.е.</td>`;
-        return `<tr>${cells}</tr>`;
+        return `<tr class="task-row"${rowStyleAttr}>${cells}</tr>`;
     }).join('');
 
     const totalsRow = `<tr class="totals-row"><td class="name-cell">Итого</td>${semesterTotals
@@ -523,6 +542,8 @@ function handleExportExcel() {
         th, td { border: 1px solid #c7d2fe; padding: 8px; font-family: 'Segoe UI', Arial, sans-serif; font-size: 12pt; }
         th { background: #e0e7ff; font-weight: 700; }
         .name-cell { text-align: left; font-weight: 600; }
+        .task-row { background: var(--row-bg, #f8fafc); }
+        .task-row td { background: inherit; }
         .highlight-cell { background: var(--cell-bg, #dbeafe); font-weight: 600; color: #1f2430; }
         .total-cell { background: #ede9fe; font-weight: 600; }
         .totals-row td { border-top: 2px solid #4338ca; }
