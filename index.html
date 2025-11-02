@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Планировщик дисциплин по семестрам</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="app-header">
+        <h1>Планировщик дисциплин по семестрам</h1>
+        <p>Добавляйте дисциплины списком, задавайте длительность по семестрам и перетаскивайте их по диаграмме.</p>
+    </header>
+    <main class="layout">
+        <section class="panel panel-controls">
+            <h2>Добавление дисциплин</h2>
+            <label for="bulkInput" class="field-label">Введите названия дисциплин (каждая с новой строки)</label>
+            <textarea id="bulkInput" class="field" rows="8" placeholder="Информатика\nМатематика\nФизика"></textarea>
+            <button id="addDisciplines" class="button primary">Добавить дисциплины</button>
+            <div class="hint">
+                После добавления настройте длительность в семестрах и перетащите дисциплину на нужный семестр.
+            </div>
+
+            <div class="section-divider"></div>
+
+            <h2>Семестры</h2>
+            <div class="semester-controls">
+                <button id="removeSemester" class="button">– Убрать семестр</button>
+                <span id="semesterCountLabel" class="semester-count"></span>
+                <button id="addSemester" class="button">+ Добавить семестр</button>
+            </div>
+
+            <div class="section-divider"></div>
+
+            <h2>Импорт и экспорт</h2>
+            <p class="hint">Экспортируйте данные в JSON или импортируйте ранее сохранённую схему.</p>
+            <div class="import-export-buttons">
+                <button id="exportBtn" class="button">Экспорт</button>
+                <button id="importBtn" class="button">Импорт</button>
+            </div>
+        </section>
+
+        <section class="panel panel-board">
+            <div class="board-header">
+                <div class="tasks-title">Дисциплины</div>
+                <div id="semesterHeader" class="semester-header"></div>
+            </div>
+            <div id="taskList" class="task-list"></div>
+            <div id="chart" class="chart"></div>
+        </section>
+    </main>
+
+    <dialog id="dataDialog" class="data-dialog">
+        <form method="dialog" class="data-dialog__content">
+            <h3 id="dataDialogTitle">Данные</h3>
+            <textarea id="dataTextarea" rows="10" class="field"></textarea>
+            <div id="dataDialogHint" class="hint"></div>
+            <div class="dialog-actions">
+                <button value="cancel" class="button">Отмена</button>
+                <button id="dataDialogConfirm" class="button primary" value="default">Ок</button>
+            </div>
+        </form>
+    </dialog>
+
+    <template id="taskTemplate">
+        <div class="task-item">
+            <div class="task-main">
+                <div class="task-name"></div>
+                <label class="task-duration-label">Длительность:
+                    <input type="number" min="1" max="12" class="task-duration-input"> сем.
+                </label>
+            </div>
+            <button class="button button-small task-remove" title="Удалить дисциплину">Удалить</button>
+        </div>
+    </template>
+
+    <script src="script.js" defer></script>
+</body>
+</html>
