@@ -16,13 +16,15 @@ const dataDialogHint = document.getElementById('dataDialogHint');
 const dataDialogConfirm = document.getElementById('dataDialogConfirm');
 const dataTextarea = document.getElementById('dataTextarea');
 const taskTemplate = document.getElementById('taskTemplate');
+const maxCreditsInput = document.getElementById('maxCreditsInput');
 
 let semesterCount = 8;
 let taskIdCounter = 1;
 let tasks = [];
 let pendingDialogMode = null;
 
-const MAX_CREDITS_PER_TWO_SEMESTERS = 60;
+const DEFAULT_MAX_CREDITS_PER_TWO_SEMESTERS = 60;
+let maxCreditsPerTwoSemesters = DEFAULT_MAX_CREDITS_PER_TWO_SEMESTERS;
 
 function clamp(value, min, max) {
     return Math.min(Math.max(value, min), max);
@@ -34,6 +36,15 @@ function sanitizeCreditsValue(value) {
         return 0;
     }
     return Math.round(number * 2) / 2;
+}
+
+function sanitizeLimitValue(value) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) {
+        return DEFAULT_MAX_CREDITS_PER_TWO_SEMESTERS;
+    }
+    const rounded = Math.round(number * 2) / 2;
+    return clamp(rounded, 1, 400);
 }
 
 function formatCredits(value) {
@@ -99,7 +110,7 @@ function checkCreditLimits(taskList = tasks) {
     const totals = calculateSemesterTotals(taskList);
     for (let i = 0; i < semesterCount; i += 2) {
         const pairTotal = (totals[i] || 0) + (totals[i + 1] || 0);
-        if (pairTotal > MAX_CREDITS_PER_TWO_SEMESTERS + 1e-9) {
+        if (pairTotal > maxCreditsPerTwoSemesters + 1e-9) {
             return {
                 valid: false,
                 index: i,
@@ -207,7 +218,7 @@ function renderTaskList() {
                 task.credits[i] = newValue;
                 const validation = checkCreditLimits();
                 if (!validation.valid) {
-                    alert(`Превышена суммарная трудоёмкость для ${validation.label} семестров. Лимит ${MAX_CREDITS_PER_TWO_SEMESTERS} з.е.`);
+                    alert(`Превышена суммарная трудоёмкость для ${validation.label} семестров. Лимит ${formatCredits(maxCreditsPerTwoSemesters)} з.е.`);
                     task.credits[i] = previousValue;
                     input.value = formatCredits(previousValue);
                     return;
@@ -303,7 +314,7 @@ function renderCreditsSummary() {
         const pairSum = (totals[i] || 0) + (totals[i + 1] || 0);
         const pairEl = document.createElement('div');
         pairEl.className = 'credits-pair';
-        if (pairSum > MAX_CREDITS_PER_TWO_SEMESTERS + 1e-9) {
+        if (pairSum > maxCreditsPerTwoSemesters + 1e-9) {
             pairEl.classList.add('credits-pair--exceeded');
         }
 
@@ -317,16 +328,16 @@ function renderCreditsSummary() {
 
         const pairLimit = document.createElement('div');
         pairLimit.className = 'credits-pair__limit';
-        pairLimit.textContent = `Лимит ${MAX_CREDITS_PER_TWO_SEMESTERS} з.е.`;
+        pairLimit.textContent = `Лимит ${formatCredits(maxCreditsPerTwoSemesters)} з.е.`;
 
         pairEl.appendChild(pairTitle);
         pairEl.appendChild(pairTotal);
         pairEl.appendChild(pairLimit);
 
-        if (pairSum > MAX_CREDITS_PER_TWO_SEMESTERS + 1e-9) {
+        if (pairSum > maxCreditsPerTwoSemesters + 1e-9) {
             const exceedEl = document.createElement('div');
             exceedEl.className = 'credits-pair__exceed';
-            exceedEl.textContent = `Превышение на ${formatCredits(pairSum - MAX_CREDITS_PER_TWO_SEMESTERS)} з.е.`;
+            exceedEl.textContent = `Превышение на ${formatCredits(pairSum - maxCreditsPerTwoSemesters)} з.е.`;
             pairEl.appendChild(exceedEl);
         }
 
@@ -382,7 +393,7 @@ function startDrag(event) {
             task.start = finalStart;
             const validation = checkCreditLimits();
             if (!validation.valid) {
-                alert(`Превышена суммарная трудоёмкость для ${validation.label} семестров. Лимит ${MAX_CREDITS_PER_TWO_SEMESTERS} з.е.`);
+                alert(`Превышена суммарная трудоёмкость для ${validation.label} семестров. Лимит ${formatCredits(maxCreditsPerTwoSemesters)} з.е.`);
                 task.start = previousStart;
             }
         }
@@ -407,6 +418,7 @@ function handleExportJson() {
     tasks.forEach(ensureTaskBounds);
     const data = {
         semesters: semesterCount,
+        maxCreditsPerTwoSemesters,
         tasks: tasks.map(task => ({
             id: task.id,
             name: task.name,
@@ -536,6 +548,14 @@ dataDialog.addEventListener('submit', (event) => {
                 throw new Error('Отсутствуют необходимые поля.');
             }
             semesterCount = clamp(Math.floor(parsed.semesters), 1, 20);
+            if (parsed.maxCreditsPerTwoSemesters !== undefined) {
+                maxCreditsPerTwoSemesters = sanitizeLimitValue(parsed.maxCreditsPerTwoSemesters);
+            } else {
+                maxCreditsPerTwoSemesters = DEFAULT_MAX_CREDITS_PER_TWO_SEMESTERS;
+            }
+            if (maxCreditsInput) {
+                maxCreditsInput.value = formatCredits(maxCreditsPerTwoSemesters);
+            }
             let nextId = taskIdCounter;
             let maxId = taskIdCounter - 1;
             const importedTasks = parsed.tasks
@@ -599,6 +619,19 @@ removeSemesterBtn.addEventListener('click', () => {
 exportBtn.addEventListener('click', handleExportJson);
 exportExcelBtn.addEventListener('click', handleExportExcel);
 importBtn.addEventListener('click', handleImport);
+
+if (maxCreditsInput) {
+    maxCreditsInput.value = formatCredits(maxCreditsPerTwoSemesters);
+    maxCreditsInput.addEventListener('change', () => {
+        maxCreditsPerTwoSemesters = sanitizeLimitValue(maxCreditsInput.value);
+        maxCreditsInput.value = formatCredits(maxCreditsPerTwoSemesters);
+        renderAll();
+        const validation = checkCreditLimits();
+        if (!validation.valid) {
+            alert(`Текущая нагрузка превышает лимит для ${validation.label} семестров. Лимит ${formatCredits(maxCreditsPerTwoSemesters)} з.е.`);
+        }
+    });
+}
 
 bulkInput.addEventListener('keydown', (event) => {
     if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
