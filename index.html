@@ -32,6 +32,13 @@
 
             <div class="section-divider"></div>
 
+            <h2>Ограничение трудоёмкости</h2>
+            <label for="maxCreditsInput" class="field-label">Максимум з.е. на каждые два последовательных семестра</label>
+            <input type="number" id="maxCreditsInput" class="field field--short" min="1" max="400" step="0.5" value="60">
+            <div class="hint">Это значение используется при проверке нагрузки и подсветке превышений.</div>
+
+            <div class="section-divider"></div>
+
             <h2>Импорт и экспорт</h2>
             <p class="hint">Экспортируйте данные в JSON или импортируйте ранее сохранённую схему. Также доступен экспорт в Excel.</p>
             <div class="import-export-buttons">
@@ -39,7 +46,6 @@
                 <button id="exportExcelBtn" class="button">Экспорт Excel</button>
                 <button id="importBtn" class="button">Импорт</button>
             </div>
-            <div class="hint">Максимальная трудоёмкость — 60 з.е. на каждые два последовательных семестра.</div>
         </section>
 
         <section class="panel panel-board">
