@@ -140,6 +140,84 @@ body {
     gap: 0.75rem;
 }
 
+.credits-summary {
+    margin-top: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.credits-summary__title {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.credits-semesters {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+    gap: 0.5rem;
+}
+
+.credits-semester {
+    padding: 0.6rem 0.5rem;
+    border-radius: 10px;
+    background: var(--accent-light);
+    text-align: center;
+    font-size: 0.85rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.credits-semester__label {
+    font-weight: 600;
+}
+
+.credits-semester__value {
+    font-variant-numeric: tabular-nums;
+}
+
+.credits-pairs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 0.75rem;
+}
+
+.credits-pair {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 0.75rem 0.9rem;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.credits-pair--exceeded {
+    border-color: #ef4444;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+}
+
+.credits-pair__title {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.credits-pair__total {
+    font-variant-numeric: tabular-nums;
+}
+
+.credits-pair__limit {
+    font-size: 0.8rem;
+    color: var(--muted);
+}
+
+.credits-pair__exceed {
+    font-size: 0.8rem;
+    color: #dc2626;
+    font-weight: 600;
+}
+
 .board-header {
     display: grid;
     grid-template-columns: 240px 1fr;
@@ -195,6 +273,45 @@ body {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+}
+
+.task-workload {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.task-workload-title {
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.task-workload-inputs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 0.5rem;
+}
+
+.task-workload-entry {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+}
+
+.task-workload-entry input {
+    width: 100%;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    padding: 0.35rem 0.5rem;
+    font-size: 0.85rem;
+}
+
+.task-workload-entry input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(63, 81, 181, 0.15);
 }
 
 .task-name {

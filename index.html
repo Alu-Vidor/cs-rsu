@@ -33,11 +33,13 @@
             <div class="section-divider"></div>
 
             <h2>Импорт и экспорт</h2>
-            <p class="hint">Экспортируйте данные в JSON или импортируйте ранее сохранённую схему.</p>
+            <p class="hint">Экспортируйте данные в JSON или импортируйте ранее сохранённую схему. Также доступен экспорт в Excel.</p>
             <div class="import-export-buttons">
-                <button id="exportBtn" class="button">Экспорт</button>
+                <button id="exportBtn" class="button">Экспорт JSON</button>
+                <button id="exportExcelBtn" class="button">Экспорт Excel</button>
                 <button id="importBtn" class="button">Импорт</button>
             </div>
+            <div class="hint">Максимальная трудоёмкость — 60 з.е. на каждые два последовательных семестра.</div>
         </section>
 
         <section class="panel panel-board">
@@ -45,6 +47,7 @@
                 <div class="tasks-title">Дисциплины</div>
                 <div id="semesterHeader" class="semester-header"></div>
             </div>
+            <div id="creditsSummary" class="credits-summary"></div>
             <div id="taskList" class="task-list"></div>
             <div id="chart" class="chart"></div>
         </section>
@@ -69,6 +72,10 @@
                 <label class="task-duration-label">Длительность:
                     <input type="number" min="1" max="12" class="task-duration-input"> сем.
                 </label>
+                <div class="task-workload">
+                    <div class="task-workload-title">Трудоёмкость (з.е.) по семестрам</div>
+                    <div class="task-workload-inputs"></div>
+                </div>
             </div>
             <button class="button button-small task-remove" title="Удалить дисциплину">Удалить</button>
         </div>
