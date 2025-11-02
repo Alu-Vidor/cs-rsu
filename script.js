@@ -20,6 +20,7 @@ const maxCreditsInput = document.getElementById('maxCreditsInput');
 
 let semesterCount = 8;
 let taskIdCounter = 1;
+let colorSeedCounter = 0;
 let tasks = [];
 let pendingDialogMode = null;
 
@@ -122,6 +123,47 @@ function checkCreditLimits(taskList = tasks) {
     return { valid: true };
 }
 
+function allocateColorSeed() {
+    return colorSeedCounter++;
+}
+
+function ensureTaskColor(task) {
+    if (!Number.isFinite(task.colorSeed)) {
+        task.colorSeed = allocateColorSeed();
+    }
+}
+
+function getTaskColors(task) {
+    ensureTaskColor(task);
+    const seed = task.colorSeed;
+    const hue = (seed * 137.508) % 360;
+    const saturation = 65;
+    const secondarySaturation = Math.min(saturation + 10, 100);
+    const primaryLightness = 55;
+    const secondaryLightness = Math.max(20, primaryLightness - 20);
+    const backgroundLightness = 86;
+    return {
+        primary: `hsl(${hue}, ${saturation}%, ${primaryLightness}%)`,
+        secondary: `hsl(${hue}, ${secondarySaturation}%, ${secondaryLightness}%)`,
+        excelBackground: hslToHex(hue, saturation, backgroundLightness)
+    };
+}
+
+function hslToHex(h, s, l) {
+    const hue = ((h % 360) + 360) % 360;
+    const saturation = clamp(s, 0, 100) / 100;
+    const lightness = clamp(l, 0, 100) / 100;
+    const k = n => (n + hue / 30) % 12;
+    const a = saturation * Math.min(lightness, 1 - lightness);
+    const f = n => {
+        const channel = lightness - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+        return Math.round(channel * 255)
+            .toString(16)
+            .padStart(2, '0');
+    };
+    return `#${f(0)}${f(8)}${f(4)}`;
+}
+
 function createTask(name) {
     const trimmed = name.trim();
     if (!trimmed) return null;
@@ -130,7 +172,8 @@ function createTask(name) {
         name: trimmed,
         duration: 1,
         start: 0,
-        credits: [0]
+        credits: [0],
+        colorSeed: allocateColorSeed()
     };
 }
 
@@ -163,6 +206,7 @@ function ensureTaskBounds(task) {
     }
     task.start = clamp(task.start, 0, Math.max(0, semesterCount - task.duration));
     syncTaskCredits(task);
+    ensureTaskColor(task);
 }
 
 function renderTaskList() {
@@ -260,13 +304,16 @@ function renderChart() {
         block.className = 'task-block';
         block.dataset.taskId = task.id;
         const totalCredits = task.credits.reduce((sum, credit) => sum + (Number(credit) || 0), 0);
-        block.textContent = `${task.duration} сем., ${formatCredits(totalCredits)} з.е.`;
+        block.textContent = `${formatCredits(totalCredits)} з.е.`;
         block.title = task.credits
             .map((credit, index) => {
                 const semesterNumber = task.start + index + 1;
                 return `${semesterNumber}-й семестр: ${formatCredits(Number(credit) || 0)} з.е.`;
             })
             .join('\n');
+        const colors = getTaskColors(task);
+        block.style.setProperty('--task-color', colors.primary);
+        block.style.setProperty('--task-color-alt', colors.secondary);
         updateBlockPosition(block, task);
 
         block.addEventListener('pointerdown', startDrag);
@@ -426,7 +473,8 @@ function handleExportJson() {
             start: task.start,
             credits: Array.isArray(task.credits)
                 ? task.credits.map(value => sanitizeCreditsValue(value))
-                : []
+                : [],
+            colorSeed: task.colorSeed
         }))
     };
     const json = JSON.stringify(data, null, 2);
@@ -447,17 +495,20 @@ function handleExportExcel() {
     const rowsHtml = tasks.map(task => {
         const taskTotal = task.credits.reduce((sum, credit) => sum + (Number(credit) || 0), 0);
         let cells = `<td class="name-cell">${escapeHtml(task.name)}</td>`;
+        const colors = getTaskColors(task);
         for (let semesterIndex = 0; semesterIndex < semesterCount; semesterIndex++) {
             const relativeIndex = semesterIndex - task.start;
             const isActive = relativeIndex >= 0 && relativeIndex < task.duration;
             let content = '';
             let cellClass = '';
+            let styleAttr = '';
             if (isActive) {
                 const creditValue = task.credits[relativeIndex] || 0;
                 content = `${formatCredits(creditValue)} з.е.`;
                 cellClass = 'highlight-cell';
+                styleAttr = ` style="--cell-bg: ${colors.excelBackground};"`;
             }
-            cells += `<td class="${cellClass}">${content}</td>`;
+            cells += `<td class="${cellClass}"${styleAttr}>${content}</td>`;
         }
         cells += `<td class="total-cell">${formatCredits(taskTotal)} з.е.</td>`;
         return `<tr>${cells}</tr>`;
@@ -472,7 +523,7 @@ function handleExportExcel() {
         th, td { border: 1px solid #c7d2fe; padding: 8px; font-family: 'Segoe UI', Arial, sans-serif; font-size: 12pt; }
         th { background: #e0e7ff; font-weight: 700; }
         .name-cell { text-align: left; font-weight: 600; }
-        .highlight-cell { background: #dbeafe; font-weight: 600; }
+        .highlight-cell { background: var(--cell-bg, #dbeafe); font-weight: 600; color: #1f2430; }
         .total-cell { background: #ede9fe; font-weight: 600; }
         .totals-row td { border-top: 2px solid #4338ca; }
     </style></head><body><table>
@@ -558,6 +609,9 @@ dataDialog.addEventListener('submit', (event) => {
             }
             let nextId = taskIdCounter;
             let maxId = taskIdCounter - 1;
+            const usedColorSeeds = new Set();
+            let fallbackColorSeed = 0;
+            let maxColorSeed = -1;
             const importedTasks = parsed.tasks
                 .filter(task => task && typeof task.name === 'string')
                 .map(task => {
@@ -571,12 +625,31 @@ dataDialog.addEventListener('submit', (event) => {
                     const idFromData = Number(task.id);
                     const id = Number.isFinite(idFromData) ? Math.floor(idFromData) : nextId++;
                     maxId = Math.max(maxId, id);
+                    const colorSeedCandidate = Number(task.colorSeed ?? task.colorIndex);
+                    let colorSeed;
+                    if (Number.isFinite(colorSeedCandidate) && colorSeedCandidate >= 0) {
+                        colorSeed = Math.floor(colorSeedCandidate);
+                        if (usedColorSeeds.has(colorSeed)) {
+                            while (usedColorSeeds.has(fallbackColorSeed)) {
+                                fallbackColorSeed++;
+                            }
+                            colorSeed = fallbackColorSeed++;
+                        }
+                    } else {
+                        while (usedColorSeeds.has(fallbackColorSeed)) {
+                            fallbackColorSeed++;
+                        }
+                        colorSeed = fallbackColorSeed++;
+                    }
+                    usedColorSeeds.add(colorSeed);
+                    maxColorSeed = Math.max(maxColorSeed, colorSeed);
                     return {
                         id,
                         name: task.name.trim(),
                         duration,
                         start,
-                        credits
+                        credits,
+                        colorSeed
                     };
                 });
             importedTasks.forEach(ensureTaskBounds);
@@ -586,6 +659,7 @@ dataDialog.addEventListener('submit', (event) => {
             }
             tasks = importedTasks;
             taskIdCounter = Math.max(maxId + 1, nextId);
+            colorSeedCounter = Math.max(maxColorSeed + 1, fallbackColorSeed);
             renderAll();
         } catch (error) {
             alert(error.message || 'Не удалось импортировать данные.');
